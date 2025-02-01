@@ -4,12 +4,12 @@ using System.IO;
 
 class Program
 {
-    static List<string> tasks = new List<string>();
+    static List<TaskItem> tasks = new List<TaskItem>();
     static string filePath = "tasks.txt";
 
     static void Main()
     {
-        LoadTasks(); // Load tasks from file at startup
+        LoadTasks();
 
         while (true)
         {
@@ -19,7 +19,8 @@ class Program
             Console.WriteLine("2. View Tasks");
             Console.WriteLine("3. Mark Task as Completed");
             Console.WriteLine("4. Remove Task");
-            Console.WriteLine("5. Exit");
+            Console.WriteLine("5. Send Reminders");
+            Console.WriteLine("6. Exit");
             Console.Write("Select an option: ");
 
             string choice = Console.ReadLine();
@@ -39,7 +40,10 @@ class Program
                     RemoveTask();
                     break;
                 case "5":
-                    SaveTasks(); // Save tasks before exiting
+                    SendReminders();
+                    break;
+                case "6":
+                    SaveTasks();
                     return;
                 default:
                     Console.WriteLine("Invalid choice, press Enter to try again...");
@@ -52,9 +56,32 @@ class Program
     static void AddTask()
     {
         Console.Write("Enter the task: ");
-        string task = Console.ReadLine();
-        tasks.Add("[ ] " + task);
-        SaveTasks(); // Save immediately
+        string taskDescription = Console.ReadLine();
+
+        Console.Write("Enter due date (YYYY-MM-DD): ");
+        DateTime dueDate;
+        while (!DateTime.TryParse(Console.ReadLine(), out dueDate))
+        {
+            Console.Write("Invalid date format. Enter again (YYYY-MM-DD): ");
+        }
+
+        Console.Write("Enter priority (High, Medium, Low): ");
+        string priority = Console.ReadLine().ToLower();
+        while (priority != "high" && priority != "medium" && priority != "low")
+        {
+            Console.Write("Invalid priority. Choose High, Medium, or Low: ");
+            priority = Console.ReadLine().ToLower();
+        }
+
+        tasks.Add(new TaskItem
+        {
+            Description = taskDescription,
+            DueDate = dueDate,
+            Priority = priority,
+            Completed = false
+        });
+
+        SaveTasks();
         Console.WriteLine("Task added! Press Enter to continue...");
         Console.ReadLine();
     }
@@ -70,7 +97,9 @@ class Program
         {
             for (int i = 0; i < tasks.Count; i++)
             {
-                Console.WriteLine($"{i + 1}. {tasks[i]}");
+                var task = tasks[i];
+                string status = task.Completed ? "[✓]" : "[ ]";
+                Console.WriteLine($"{i + 1}. {status} {task.Description} - Due: {task.DueDate.ToShortDateString()} - Priority: {task.Priority}");
             }
         }
         Console.WriteLine("\nPress Enter to continue...");
@@ -84,9 +113,8 @@ class Program
         int index;
         if (int.TryParse(Console.ReadLine(), out index) && index > 0 && index <= tasks.Count)
         {
-            string taskText = tasks[index - 1].Substring(4); // Extracts text after "[ ] "
-            tasks[index - 1] = "[✓] " + taskText; // Marks task as completed
-            SaveTasks(); // Save changes
+            tasks[index - 1].Completed = true;
+            SaveTasks();
             Console.WriteLine("Task marked as completed! Press Enter to continue...");
         }
         else
@@ -104,7 +132,7 @@ class Program
         if (int.TryParse(Console.ReadLine(), out index) && index > 0 && index <= tasks.Count)
         {
             tasks.RemoveAt(index - 1);
-            SaveTasks(); // Save changes
+            SaveTasks();
             Console.WriteLine("Task removed! Press Enter to continue...");
         }
         else
@@ -114,15 +142,30 @@ class Program
         Console.ReadLine();
     }
 
+    static void SendReminders()
+    {
+        Console.WriteLine("\n=== Sending Reminders ===");
+        DateTime today = DateTime.Today;
+        foreach (var task in tasks)
+        {
+            if (!task.Completed && task.DueDate <= today)
+            {
+                Console.WriteLine($"Reminder: {task.Description} is due today or overdue! Priority: {task.Priority}");
+                // Here, you would call an email/SMS function
+            }
+        }
+        Console.WriteLine("\nPress Enter to continue...");
+        Console.ReadLine();
+    }
+
     static void SaveTasks()
     {
-        try
+        using (StreamWriter writer = new StreamWriter(filePath))
         {
-            File.WriteAllLines(filePath, tasks);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Error saving tasks: " + ex.Message);
+            foreach (var task in tasks)
+            {
+                writer.WriteLine($"{task.Description}|{task.DueDate}|{task.Priority}|{task.Completed}");
+            }
         }
     }
 
@@ -130,14 +173,30 @@ class Program
     {
         if (File.Exists(filePath))
         {
-            try
+            tasks.Clear();
+            string[] lines = File.ReadAllLines(filePath);
+            foreach (string line in lines)
             {
-                tasks = new List<string>(File.ReadAllLines(filePath));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error loading tasks: " + ex.Message);
+                string[] parts = line.Split('|');
+                if (parts.Length == 4)
+                {
+                    tasks.Add(new TaskItem
+                    {
+                        Description = parts[0],
+                        DueDate = DateTime.Parse(parts[1]),
+                        Priority = parts[2],
+                        Completed = bool.Parse(parts[3])
+                    });
+                }
             }
         }
     }
+}
+
+class TaskItem
+{
+    public string Description { get; set; }
+    public DateTime DueDate { get; set; }
+    public string Priority { get; set; }
+    public bool Completed { get; set; }
 }
