@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 class Program
 {
     static List<string> tasks = new List<string>();
+    static string filePath = "tasks.txt";
 
     static void Main()
     {
+        LoadTasks(); // Load tasks from file at startup
+
         while (true)
         {
             Console.Clear();
@@ -35,6 +39,7 @@ class Program
                     RemoveTask();
                     break;
                 case "5":
+                    SaveTasks(); // Save tasks before exiting
                     return;
                 default:
                     Console.WriteLine("Invalid choice, press Enter to try again...");
@@ -49,6 +54,7 @@ class Program
         Console.Write("Enter the task: ");
         string task = Console.ReadLine();
         tasks.Add("[ ] " + task);
+        SaveTasks(); // Save immediately
         Console.WriteLine("Task added! Press Enter to continue...");
         Console.ReadLine();
     }
@@ -80,6 +86,7 @@ class Program
         {
             string taskText = tasks[index - 1].Substring(4); // Extracts text after "[ ] "
             tasks[index - 1] = "[✓] " + taskText; // Marks task as completed
+            SaveTasks(); // Save changes
             Console.WriteLine("Task marked as completed! Press Enter to continue...");
         }
         else
@@ -97,6 +104,7 @@ class Program
         if (int.TryParse(Console.ReadLine(), out index) && index > 0 && index <= tasks.Count)
         {
             tasks.RemoveAt(index - 1);
+            SaveTasks(); // Save changes
             Console.WriteLine("Task removed! Press Enter to continue...");
         }
         else
@@ -104,5 +112,32 @@ class Program
             Console.WriteLine("Invalid task number! Press Enter to try again...");
         }
         Console.ReadLine();
+    }
+
+    static void SaveTasks()
+    {
+        try
+        {
+            File.WriteAllLines(filePath, tasks);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error saving tasks: " + ex.Message);
+        }
+    }
+
+    static void LoadTasks()
+    {
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                tasks = new List<string>(File.ReadAllLines(filePath));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading tasks: " + ex.Message);
+            }
+        }
     }
 }
